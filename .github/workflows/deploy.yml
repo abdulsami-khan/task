@@ -127,7 +127,7 @@ jobs:
               env:
                 GHCR_USER: ${{ github.repository_owner }}
                 GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                REPO_SSH_KEY: ${{ secrets.GH_DEPLOY_KEY }}
+                REPO_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
               run: |
                   ansible-playbook \
                     -i ansible/inventory.ini \
