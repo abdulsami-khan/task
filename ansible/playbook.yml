@@ -9,13 +9,13 @@
       ghcr_token: "{{ lookup('env','GHCR_TOKEN') }}"
 
   tasks:
-      - name: Add host to known_hosts
-        ansible.builtin.known_hosts:
-          path: /home/ubuntu/.ssh/known_hosts
-          name: "{{ inventory_hostname }}"
-          key: "{{ lookup('pipe', 'ssh-keyscan -H ' + inventory_hostname) }}"
-          state: present
-
+      - name: Ensure .ssh directory exists
+        file:
+          path: /home/ubuntu/.ssh
+          state: directory
+          mode: '0700'
+          owner: ubuntu
+          group: ubuntu
 
       - name: Install Git if missing
         ansible.builtin.apt:
@@ -28,8 +28,15 @@
         become_user: ubuntu
         ansible.builtin.copy:
           dest: /home/ubuntu/.ssh/id_rsa
-          content: "{{ lookup('env', 'REPO_SSH_KEY')}}"
+          content: "{{ lookup('env', 'REPO_SSH_KEY') }}"
           mode: '0600'
+
+      - name: Add host to known_hosts
+        ansible.builtin.known_hosts:
+          path: /home/ubuntu/.ssh/known_hosts
+          name: "{{ inventory_hostname }}"
+          key: "{{ lookup('pipe', 'ssh-keyscan -H ' + inventory_hostname) }}"
+          state: present
 
       - name: Add GitHub.com to known_hosts for ubuntu
         become: true
@@ -37,23 +44,8 @@
         ansible.builtin.known_hosts:
           path: /home/ubuntu/.ssh/known_hosts
           name: github.com
-          key: "{{ lookup('pipe', 'ssh-keyscan github.com') }}"
+          key: "{{ lookup('pipe', 'ssh-keyscan -H github.com') }}"
 
-      - name: Ensure .ssh directory exists
-        become: true
-        become_user: ubuntu
-        file:
-          path: /home/ubuntu/.ssh
-          state: directory
-          mode: '0700'
-
-      - name: Copy private SSH key
-        become: true
-        become_user: ubuntu
-        copy:
-          dest: /home/ubuntu/.ssh/id_rsa
-          content: "{{ lookup('env', 'REPO_SSH_KEY') }}"
-          mode: '0600'
 
       - name: Ensure /opt/todo-app exists and is owned by ubuntu
         become: true
@@ -64,7 +56,10 @@
           group: ubuntu
           mode: '0755'
 
+
       - name: Clone or update private todo-app repo via SSH
+        become: true
+        become_user: ubuntu
         git:
           repo: git@github.com:abdulsami-khan/task.git
           dest: /opt/todo-app
@@ -120,16 +115,6 @@
         copy: 
           src: .env
           dest: /opt/todo-app/.env
-      
-      - name: Copy .env file to frontend
-        copy:
-          src: .env
-          dest: /opt/todo-app/frontend/.env
-        
-      - name: Copy .env file to frontend
-        copy:
-          src: .env
-          dest: /opt/todo-app/backend/.env
 
       - name: Ensure Docker is running
         service:
